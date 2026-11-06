@@ -17,10 +17,14 @@ The game is inspired by *Samurai vs Zombies Defense*. That game is no longer ava
 * Storm and Rally active abilities
 * six enemy roles, including Iron Revenants and recurring bosses
 * detailed art for the ronin, every ally, and every skeleton enemy
+* a bestiary with enemy roles and combat stats
+* four rotating wave conditions
+* combat combos with coin bonuses
 * achievements with career statistics and coin rewards
 * five permanent upgrade paths
 * automatic local saving
 * mouse and keyboard support
+* controller support
 
 ## Controls
 
@@ -31,6 +35,10 @@ The game is inspired by *Samurai vs Zombies Defense*. That game is no longer ava
 * Cast Storm with `Q`
 * Use Rally with `E`
 * Pause or return with `Esc`
+* Toggle sound with `M`
+* Toggle full screen with `F11`
+
+Controller buttons are listed inside the How to Play screen.
 
 ## Run from source
 
@@ -39,6 +47,12 @@ Install Python 3.11 or newer, then run:
 ```powershell
 python -m pip install -r requirements.txt
 python game.py
+```
+
+Run the automated checks with:
+
+```powershell
+python -m unittest discover -s tests -v
 ```
 
 ## Build the Windows application

@@ -1,5 +1,14 @@
 # Changelog
 
+## Next update
+
+* added sound and full screen controls
+* added controller support
+* added a bestiary for all enemy roles
+* added four rotating wave conditions
+* added combat combos and small coin bonuses
+* added gameplay tests and automatic GitHub checks
+
 ## 0.4.0, 2026 11 06
 
 * replaced the basic enemies with detailed KayKit skeleton characters
