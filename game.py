@@ -42,11 +42,12 @@ def clamp(value, low, high):
 def load_save():
     default = {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
                "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
-               "stats": {"kills": 0, "summons": 0, "wins": 0}, "achievements": []}
+               "stats": {"kills": 0, "summons": 0, "wins": 0}, "achievements": [],
+               "sound": True}
     try:
         with open(SAVE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        default.update({k: data[k] for k in ("unlocked", "coins", "best", "difficulty", "endless_best", "achievements") if k in data})
+        default.update({k: data[k] for k in ("unlocked", "coins", "best", "difficulty", "endless_best", "achievements", "sound") if k in data})
         default["upgrades"].update(data.get("upgrades", {}))
         default["stats"].update(data.get("stats", {}))
     except (OSError, ValueError, TypeError):
@@ -66,6 +67,7 @@ def save_data(data):
 class SoundBank:
     def __init__(self):
         self.ok = pygame.mixer.get_init() is not None
+        self.enabled = True
         self.cache = {}
 
     def tone(self, name, freq, duration, volume=.18, wave="sine"):
@@ -91,6 +93,8 @@ class SoundBank:
         return snd
 
     def play(self, name):
+        if not self.enabled:
+            return
         specs = {
             "slash": (180, .12, .14, "noise"), "bow": (620, .09, .10, "square"),
             "hit": (90, .11, .12, "noise"), "summon": (440, .22, .12, "sine"),
@@ -648,6 +652,8 @@ class Game:
             ).convert_alpha()
         self.save = load_save()
         self.sounds = SoundBank()
+        self.sounds.enabled = self.save.get("sound", True)
+        self.fullscreen = False
         self.state = "menu"
         self.previous_state = "menu"
         self.battle = None
@@ -730,6 +736,20 @@ class Game:
     def handle_event(self, e):
         if e.type == pygame.QUIT: self.running = False
         if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_m:
+                self.save["sound"] = not self.save.get("sound", True)
+                self.sounds.enabled = self.save["sound"]
+                self.toast = "Sound on" if self.sounds.enabled else "Sound off"
+                self.toast_timer = 1.5
+                save_data(self.save)
+                return
+            if e.key == pygame.K_F11:
+                self.fullscreen = not self.fullscreen
+                flags = pygame.FULLSCREEN if self.fullscreen else 0
+                self.screen = pygame.display.set_mode((WIDTH, HEIGHT), flags)
+                self.toast = "Full screen" if self.fullscreen else "Windowed"
+                self.toast_timer = 1.5
+                return
             if self.state == "battle" and self.battle.state == "won" and e.key == pygame.K_RETURN and (self.battle.endless or self.battle.wave < 15):
                 self.start_wave(self.battle.wave + 1, self.battle.endless); return
             if self.state == "battle" and self.battle.state == "lost" and e.key == pygame.K_r:
@@ -779,7 +799,8 @@ class Game:
         Button((1015,22,235,48), f"DIFFICULTY: {difficulty}").draw(self.canvas, self.font_tiny, pygame.mouse.get_pos())
         best = self.font_tiny.render(f"Endless best: Night {self.save.get('endless_best', 0) - 15}" if self.save.get("endless_best", 0) else "Endless best: None", True, (190,197,210))
         self.canvas.blit(best, (1050, 82))
-        self.center_text(self.canvas, "Campaign progress is saved automatically", self.font_tiny, 680, (170,180,196))
+        sound = "ON" if self.save.get("sound", True) else "OFF"
+        self.center_text(self.canvas, f"M  Sound {sound}     F11  Full screen     Progress saves automatically", self.font_tiny, 680, (170,180,196))
 
     def draw_waves(self):
         self.title_backdrop(); self.panel(self.canvas, pygame.Rect(210,110,860,510))
@@ -828,7 +849,7 @@ class Game:
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
-        lines=[("MOVE","A / D or Left / Right"),("SWORD","SPACE or left mouse, strong at close range"),("BOW","F, ranged shot"),("SUMMON","1 Guard  •  2 Archer  •  3 Monk  •  4 Captain"),("ABILITIES","Q Storm  •  E Rally heal"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("STRATEGY","Summons have cooldowns, so timing matters."),("MODES","Clear 15 campaign waves, then test an endless run.")]
+        lines=[("MOVE","A / D or Left / Right"),("SWORD","SPACE or left mouse, strong at close range"),("BOW","F, ranged shot"),("SUMMON","1 Guard  •  2 Archer  •  3 Monk  •  4 Captain"),("ABILITIES","Q Storm  •  E Rally heal"),("OPTIONS","M Sound  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
         for i,(a,b) in enumerate(lines):
             y=210+i*47; self.canvas.blit(self.font_small.render(a,True,(238,180,76)),(300,y)); self.canvas.blit(self.font_small.render(b,True,(232,230,222)),(475,y))
         self.center_text(self.canvas,"ESC  Back",self.font_small,595,(180,190,205))
