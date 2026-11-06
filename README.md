@@ -1,5 +1,7 @@
 # Moonblade: Last Lantern
 
+[![Game tests](https://github.com/elieh999/MoonbladeLastLantern/actions/workflows/tests.yml/badge.svg)](https://github.com/elieh999/MoonbladeLastLantern/actions/workflows/tests.yml)
+
 Moonblade is a defense game for Windows. You control a ronin, fight enemies, summon allies, and protect the village gate.
 
 ![Moonblade battle](docs/battle.png)
@@ -25,6 +27,12 @@ The game is inspired by *Samurai vs Zombies Defense*. That game is no longer ava
 * automatic local saving
 * mouse and keyboard support
 * controller support
+
+## Bestiary
+
+![Moonblade bestiary](docs/bestiary.png)
+
+The bestiary explains each enemy's role, starting wave, health, and damage.
 
 ## Controls
 
@@ -67,7 +75,9 @@ The packaged game stores progress in `%LOCALAPPDATA%\MoonbladeDefense\save.json`
 
 ## Project status
 
-The game is still in development. It has a full campaign, upgrades, bosses, difficulty options, achievements, and an endless mode. More allies, maps, animation, controller support, music, and sound will come later.
+The game is still in development. It has a full campaign, upgrades, bosses, difficulty options, achievements, and an endless mode. More allies, maps, animation, music, and sound will come later.
+
+Read the [roadmap](ROADMAP.md) for planned work. If you want to help, read the [contribution guide](CONTRIBUTING.md).
 
 ## License
 
