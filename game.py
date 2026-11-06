@@ -338,12 +338,18 @@ class Hero:
         move = 0
         if keys[pygame.K_a] or keys[pygame.K_LEFT]: move -= 1
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]: move += 1
+        controller = battle.game.controller
+        if controller and controller.get_init():
+            axis = controller.get_axis(0)
+            if abs(axis) > .2:
+                move = axis
         if move:
             self.facing = move
             self.x = clamp(self.x + move * 185 * dt, 210, 1120)
             self.anim += dt * 10
         enemies = [e for e in battle.enemies if e.alive and abs(e.x - self.x) < 78]
-        if (keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0]) and self.cooldown <= 0:
+        controller_sword = controller and controller.get_init() and controller.get_numbuttons() > 0 and controller.get_button(0)
+        if (keys[pygame.K_SPACE] or pygame.mouse.get_pressed()[0] or controller_sword) and self.cooldown <= 0:
             self.cooldown = .48
             self.slashing = .18
             battle.sounds.play("slash")
@@ -351,7 +357,8 @@ class Hero:
                 if (e.x - self.x) * self.facing > -15:
                     e.take_damage(self.damage, battle)
                     e.x += self.facing * 13
-        if keys[pygame.K_f] and self.bow_cd <= 0:
+        controller_bow = controller and controller.get_init() and controller.get_numbuttons() > 2 and controller.get_button(2)
+        if (keys[pygame.K_f] or controller_bow) and self.bow_cd <= 0:
             self.bow_cd = .72
             battle.projectiles.append(Projectile(self.x + self.facing * 25, self.y - 72, self.facing * 560, self.bow_damage, "ally"))
             battle.sounds.play("bow")
@@ -488,6 +495,14 @@ class Battle:
                 if pygame.Rect(x, 638, 108, 66).collidepoint(mx, my): self.summon(kind)
             if pygame.Rect(484, 638, 140, 66).collidepoint(mx, my): self.lightning()
             if pygame.Rect(634, 638, 140, 66).collidepoint(mx, my): self.rally()
+        if event.type == pygame.JOYBUTTONDOWN:
+            actions = {4: lambda: self.summon("guard"), 5: lambda: self.summon("archer"),
+                       6: lambda: self.summon("monk"), 7: lambda: self.summon("captain"),
+                       3: self.lightning, 1: self.rally}
+            if event.button == 9:
+                self.game.state = "pause"
+            elif event.button in actions:
+                actions[event.button]()
 
     def update(self, dt):
         if self.state == "intro":
@@ -654,6 +669,7 @@ class Game:
         self.sounds = SoundBank()
         self.sounds.enabled = self.save.get("sound", True)
         self.fullscreen = False
+        self.controller = pygame.joystick.Joystick(0) if pygame.joystick.get_count() else None
         self.state = "menu"
         self.previous_state = "menu"
         self.battle = None
@@ -735,6 +751,14 @@ class Game:
 
     def handle_event(self, e):
         if e.type == pygame.QUIT: self.running = False
+        if e.type == pygame.JOYDEVICEADDED and self.controller is None:
+            self.controller = pygame.joystick.Joystick(e.device_index)
+            self.toast = "Controller connected"
+            self.toast_timer = 2
+        if e.type == pygame.JOYDEVICEREMOVED and self.controller and e.instance_id == self.controller.get_instance_id():
+            self.controller = None
+            self.toast = "Controller disconnected"
+            self.toast_timer = 2
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_m:
                 self.save["sound"] = not self.save.get("sound", True)
@@ -849,7 +873,7 @@ class Game:
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
-        lines=[("MOVE","A / D or Left / Right"),("SWORD","SPACE or left mouse, strong at close range"),("BOW","F, ranged shot"),("SUMMON","1 Guard  •  2 Archer  •  3 Monk  •  4 Captain"),("ABILITIES","Q Storm  •  E Rally heal"),("OPTIONS","M Sound  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
+        lines=[("MOVE","A / D, arrows, or controller stick"),("SWORD","SPACE, left mouse, or controller A"),("BOW","F or controller X"),("SUMMON","1 to 4  •  controller shoulder and center buttons"),("ABILITIES","Q Storm  •  E Rally  •  controller Y and B"),("OPTIONS","M Sound  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
         for i,(a,b) in enumerate(lines):
             y=210+i*47; self.canvas.blit(self.font_small.render(a,True,(238,180,76)),(300,y)); self.canvas.blit(self.font_small.render(b,True,(232,230,222)),(475,y))
         self.center_text(self.canvas,"ESC  Back",self.font_small,595,(180,190,205))
