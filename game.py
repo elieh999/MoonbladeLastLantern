@@ -42,7 +42,7 @@ def clamp(value, low, high):
 def load_save():
     default = {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
                "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
-               "stats": {"kills": 0, "summons": 0, "wins": 0}, "achievements": [],
+               "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
                "sound": True}
     try:
         with open(SAVE_FILE, "r", encoding="utf-8") as f:
@@ -428,6 +428,8 @@ class Battle:
         self.elapsed = 0
         self.total = len(self.spawn_queue)
         self.killed = 0
+        self.combo = 0
+        self.combo_timer = 0
         self.state = "intro"
         self.banner_timer = 2.2
         self.shake = 0
@@ -516,6 +518,9 @@ class Battle:
             self.result_timer += dt
             return
         self.elapsed += dt
+        self.combo_timer = max(0, self.combo_timer - dt)
+        if self.combo_timer <= 0:
+            self.combo = 0
         spirit_bonus = 2.5 if self.modifier == "Moon Blessing" else 0
         self.spirit = min(self.spirit_max, self.spirit + (7.2 + spirit_bonus + self.game.save["upgrades"]["spirit"] * .8) * dt)
         self.lightning_cd = max(0, self.lightning_cd - dt)
@@ -547,8 +552,12 @@ class Battle:
         for e in list(self.enemies):
             if not e.alive:
                 self.killed += 1
+                self.combo = self.combo + 1 if self.combo_timer > 0 else 1
+                self.combo_timer = 4
+                self.game.save["stats"]["best_combo"] = max(self.combo, self.game.save["stats"].get("best_combo", 0))
                 self.game.add_stat("kills")
-                self.earned += int(e.reward * self.difficulty["reward"])
+                combo_bonus = self.combo // 5
+                self.earned += int(e.reward * self.difficulty["reward"]) + combo_bonus
                 self.sounds.play("coin")
                 self.enemies.remove(e)
         self.allies = [a for a in self.allies if a.alive]
@@ -593,6 +602,9 @@ class Battle:
         progress = (self.killed / max(1, self.total))
         wave_label = f"ENDLESS NIGHT {self.wave - 15}" if self.endless else f"WAVE {self.wave}"
         self.bar(surf, 920, 24, 330, progress, 1, (220, 146, 56), f"{wave_label}  •  {int(progress*100)}%", self.game.font_small)
+        if self.combo >= 2:
+            combo = self.game.font_small.render(f"{self.combo} HIT COMBO", True, (255, 198, 75))
+            surf.blit(combo, combo.get_rect(topright=(1245, 57)))
         for u in sorted(self.allies + self.enemies, key=lambda a: a.x): u.draw(surf)
         self.hero.draw(surf)
         for p in self.projectiles: p.draw(surf)
@@ -868,7 +880,7 @@ class Game:
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(205,72,870,590))
         self.center_text(self.canvas,"ACHIEVEMENTS",self.font_big,125,(246,194,86))
         stats = self.save["stats"]
-        summary = f"Enemies {stats.get('kills',0)}     Allies summoned {stats.get('summons',0)}     Battles won {stats.get('wins',0)}"
+        summary = f"Enemies {stats.get('kills',0)}     Allies {stats.get('summons',0)}     Wins {stats.get('wins',0)}     Best combo {stats.get('best_combo',0)}"
         self.center_text(self.canvas,summary,self.font_tiny,168,(185,199,218))
         for i,(key,(name,desc,reward)) in enumerate(ACHIEVEMENTS.items()):
             y=205+i*66; earned=key in self.save["achievements"]
