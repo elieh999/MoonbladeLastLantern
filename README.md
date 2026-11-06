@@ -2,6 +2,8 @@
 
 Moonblade is a small hero-led lane defense game for Windows. You control a wandering ronin, fight the front line yourself, summon allies with a regenerating spirit meter, and protect the last village gate from an undead army.
 
+![Moonblade battle](docs/battle.png)
+
 The project grew out of missing games such as *Samurai vs Zombies Defense* after they disappeared from modern storefronts. It is not a remake and does not use Glu's code, names, characters, audio, or extracted assets. The goal is to build a new game around the same combination of direct combat and lane-defense strategy.
 
 ## What is playable
