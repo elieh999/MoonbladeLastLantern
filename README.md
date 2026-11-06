@@ -16,6 +16,7 @@ The game is inspired by *Samurai vs Zombies Defense*. That game is no longer ava
 * summon cooldowns and a regenerating spirit resource
 * Storm and Rally active abilities
 * six enemy roles, including Iron Revenants and recurring bosses
+* detailed art for the ronin, every ally, and every skeleton enemy
 * achievements with career statistics and coin rewards
 * five permanent upgrade paths
 * automatic local saving
@@ -57,5 +58,7 @@ The game is still in development. It has a full campaign, upgrades, bosses, diff
 ## License
 
 The source code is available under the MIT License. The painted battlefield image in `assets/` is included for use with this project; please do not redistribute it as a standalone asset pack.
+
+The skeleton designs use [KayKit Skeletons](https://kaylousberg.itch.io/kaykit-skeletons) by Kay Lousberg. The pack is released under CC0 1.0. See `THIRD_PARTY_ASSETS.md` for details.
 
 Moonblade is not connected to Glu Mobile or Electronic Arts.

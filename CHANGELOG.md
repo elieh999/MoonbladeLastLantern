@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0, 2026 11 06
+
+* replaced the basic enemies with detailed KayKit skeleton characters
+* added a different look for minions, rogues, warriors, and mages
+* gave heavy enemies and bosses larger art and special colors
+* added new art for the ronin, guard, archer, monk, and captain
+* kept the original KayKit license and source link in the project
+
 ## 0.3.0, 2026 11 06
 
 * added the Gate Captain as a fourth summonable ally

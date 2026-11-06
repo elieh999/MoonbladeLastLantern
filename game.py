@@ -12,6 +12,7 @@ WIDTH, HEIGHT = 1280, 720
 GROUND_Y = 555
 FPS = 60
 TITLE = "Moonblade: Last Lantern"
+CHARACTER_SPRITES = {}
 SAVE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "MoonbladeDefense")
 SAVE_FILE = os.path.join(SAVE_DIR, "save.json")
 DIFFICULTIES = {
@@ -236,6 +237,49 @@ class Fighter:
         facing = 1 if self.side == "ally" else -1
         shadow_w = 56 if not self.boss else 90
         pygame.draw.ellipse(surf, (12, 12, 20, 110), (x - shadow_w // 2, GROUND_Y - 6, shadow_w, 15))
+        if self.side == "ally" and self.kind in CHARACTER_SPRITES:
+            heights = {"guard": 108, "archer": 116, "monk": 112, "captain": 136}
+            source = CHARACTER_SPRITES[self.kind]
+            height = heights[self.kind]
+            width = max(1, int(source.get_width() * height / source.get_height()))
+            sprite = pygame.transform.smoothscale(source, (width, height))
+            if self.flash:
+                glow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+                glow.fill((100, 100, 100, 0))
+                sprite.blit(glow, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            surf.blit(sprite, sprite.get_rect(midbottom=(x, y + 5)))
+            bar_w = 48 if self.kind != "captain" else 62
+            bar_y = y - height - 8
+            pygame.draw.rect(surf, (30, 24, 33), (x - bar_w // 2, bar_y, bar_w, 7), border_radius=3)
+            pygame.draw.rect(surf, (70, 210, 115), (x - bar_w // 2, bar_y,
+                             int(bar_w * max(0, self.hp / self.max_hp)), 7), border_radius=3)
+            return
+        if self.side == "enemy" and self.kind in CHARACTER_SPRITES:
+            heights = {"walker": 112, "runner": 120, "brute": 142, "shaman": 132,
+                       "armored": 152, "boss": 205}
+            source = CHARACTER_SPRITES[self.kind]
+            height = heights[self.kind]
+            width = max(1, int(source.get_width() * height / source.get_height()))
+            sprite = pygame.transform.smoothscale(source, (width, height))
+            if self.kind == "armored":
+                tint = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+                tint.fill((35, 45, 65, 0))
+                sprite.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            elif self.boss:
+                tint = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+                tint.fill((65, 8, 12, 0))
+                sprite.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            if self.flash:
+                glow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+                glow.fill((100, 100, 100, 0))
+                sprite.blit(glow, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            surf.blit(sprite, sprite.get_rect(midbottom=(x, y + 5)))
+            bar_w = 50 if not self.boss else 94
+            bar_y = y - height - 8
+            pygame.draw.rect(surf, (30, 24, 33), (x - bar_w // 2, bar_y, bar_w, 7), border_radius=3)
+            pygame.draw.rect(surf, (225, 65, 75), (x - bar_w // 2, bar_y,
+                             int(bar_w * max(0, self.hp / self.max_hp)), 7), border_radius=3)
+            return
         scale = 1.45 if self.boss else (1.18 if self.kind == "brute" else 1)
         body = (255, 245, 230) if self.flash else self.color
         pygame.draw.rect(surf, body, (x - 16 * scale, y - 66 * scale, 32 * scale, 48 * scale), border_radius=8)
@@ -313,6 +357,17 @@ class Hero:
         pygame.draw.ellipse(surf, (10, 10, 20, 120), (x - 35, GROUND_Y - 7, 70, 17))
         ghost = self.invuln > 0 and int(self.invuln * 30) % 2 == 0
         if ghost: return
+        if "hero" in CHARACTER_SPRITES:
+            source = CHARACTER_SPRITES["hero"]
+            height = 150
+            width = max(1, int(source.get_width() * height / source.get_height()))
+            sprite = pygame.transform.smoothscale(source, (width, height))
+            if self.facing < 0:
+                sprite = pygame.transform.flip(sprite, True, False)
+            if self.slashing > 0:
+                sprite = pygame.transform.rotate(sprite, -4 * self.facing)
+            surf.blit(sprite, sprite.get_rect(midbottom=(x + self.facing * (5 if self.slashing > 0 else 0), y + 5)))
+            return
         pygame.draw.rect(surf, (38, 78, 110), (x - 23, y - 85, 46, 67), border_radius=9)
         pygame.draw.rect(surf, (160, 38, 55), (x - 25, y - 58, 50, 10), border_radius=3)
         pygame.draw.circle(surf, (214, 181, 145), (x, y - 99), 21)
@@ -579,6 +634,18 @@ class Game:
         self.font_title = pygame.font.SysFont("georgia", 66, bold=True)
         raw_bg = pygame.image.load(resource_path(os.path.join("assets", "battlefield.png"))).convert()
         self.background = pygame.transform.smoothscale(raw_bg, (WIDTH, HEIGHT))
+        sprite_files = {
+            "hero": "ronin_hero.png", "guard": "ally_guard.png",
+            "archer": "ally_archer.png", "monk": "ally_monk.png",
+            "captain": "ally_captain.png",
+            "walker": "skeleton_minion.png", "runner": "skeleton_rogue.png",
+            "brute": "skeleton_warrior.png", "shaman": "skeleton_mage.png",
+            "armored": "skeleton_warrior.png", "boss": "skeleton_warrior.png",
+        }
+        for kind, filename in sprite_files.items():
+            CHARACTER_SPRITES[kind] = pygame.image.load(
+                resource_path(os.path.join("assets", "characters", filename))
+            ).convert_alpha()
         self.save = load_save()
         self.sounds = SoundBank()
         self.state = "menu"
