@@ -19,6 +19,14 @@ DIFFICULTIES = {
     "normal": {"label": "NORMAL", "enemy": 1.0, "reward": 1.0},
     "nightmare": {"label": "NIGHTMARE", "enemy": 1.32, "reward": 1.35},
 }
+ACHIEVEMENTS = {
+    "first_blood": ("First Blood", "Defeat your first enemy", 25),
+    "horde_breaker": ("Horde Breaker", "Defeat 100 enemies", 150),
+    "banner_caller": ("Banner Caller", "Summon 50 allies", 125),
+    "village_veteran": ("Village Veteran", "Win 15 battles", 250),
+    "deep_night": ("Deep Night", "Clear Endless Night 5", 225),
+    "master_smith": ("Master Smith", "Buy 15 forge levels", 200),
+}
 
 
 def resource_path(name):
@@ -32,12 +40,14 @@ def clamp(value, low, high):
 
 def load_save():
     default = {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
-               "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {}}
+               "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
+               "stats": {"kills": 0, "summons": 0, "wins": 0}, "achievements": []}
     try:
         with open(SAVE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        default.update({k: data[k] for k in ("unlocked", "coins", "best", "difficulty", "endless_best") if k in data})
+        default.update({k: data[k] for k in ("unlocked", "coins", "best", "difficulty", "endless_best", "achievements") if k in data})
         default["upgrades"].update(data.get("upgrades", {}))
+        default["stats"].update(data.get("stats", {}))
     except (OSError, ValueError, TypeError):
         pass
     return default
@@ -142,6 +152,7 @@ UNIT_DATA = {
     "guard": dict(name="Ashigaru", cost=30, hp=150, dmg=18, speed=58, reach=42, rate=.85, ranged=False, color=(55, 150, 185)),
     "archer": dict(name="Moon Archer", cost=45, hp=82, dmg=20, speed=46, reach=235, rate=1.25, ranged=True, color=(165, 100, 205)),
     "monk": dict(name="Lantern Monk", cost=65, hp=105, dmg=8, speed=42, reach=150, rate=1.7, ranged=True, heal=True, color=(225, 175, 75)),
+    "captain": dict(name="Gate Captain", cost=90, hp=340, dmg=32, speed=38, reach=48, rate=1.15, ranged=False, color=(195, 68, 74)),
 }
 
 ENEMY_DATA = {
@@ -149,6 +160,7 @@ ENEMY_DATA = {
     "runner": dict(name="Wraith", hp=52, dmg=10, speed=75, reach=34, rate=.72, reward=10, color=(85, 195, 190)),
     "brute": dict(name="Ogre", hp=260, dmg=28, speed=25, reach=48, rate=1.45, reward=22, color=(155, 80, 105)),
     "shaman": dict(name="Hexer", hp=95, dmg=16, speed=30, reach=220, rate=1.65, reward=17, ranged=True, color=(128, 85, 170)),
+    "armored": dict(name="Iron Revenant", hp=430, dmg=24, speed=18, reach=44, rate=1.25, reward=34, color=(90, 104, 122)),
     "boss": dict(name="Dread Daimyo", hp=1150, dmg=42, speed=21, reach=58, rate=1.2, reward=125, color=(190, 55, 70), boss=True),
 }
 
@@ -237,7 +249,7 @@ class Fighter:
             pygame.draw.arc(surf, (90, 55, 28), (x + facing * 4 - 11, y - 62, 22, 44), -math.pi / 2, math.pi / 2, 3)
         else:
             pygame.draw.line(surf, (225, 225, 235), (x + facing * 8, y - 50), (x + facing * 35, y - 78), 4)
-        if self.kind in ("guard", "boss"):
+        if self.kind in ("guard", "captain", "armored", "boss"):
             pygame.draw.polygon(surf, (35, 45, 64), [(x - 19, y - 78), (x, y - 103), (x + 19, y - 78)])
         bar_w = 48 if not self.boss else 90
         pygame.draw.rect(surf, (30, 24, 33), (x - bar_w // 2, y - int(110 * scale), bar_w, 6), border_radius=3)
@@ -352,7 +364,7 @@ class Battle:
         self.shake = 0
         self.lightning_cd = 0
         self.rally_cd = 0
-        self.summon_cooldowns = {"guard": 0, "archer": 0, "monk": 0}
+        self.summon_cooldowns = {"guard": 0, "archer": 0, "monk": 0, "captain": 0}
         self.result_timer = 0
         self.earned = 0
 
@@ -363,9 +375,10 @@ class Battle:
         if wave >= 2: options += ["runner"]
         if wave >= 4: options += ["brute"]
         if wave >= 6: options += ["shaman"]
+        if wave >= 8: options += ["armored"]
         queue = []
         for i in range(count):
-            weights = [50 if k == "walker" else 24 if k == "runner" else 14 if k == "brute" else 12 for k in options]
+            weights = [50 if k == "walker" else 24 if k == "runner" else 14 if k == "brute" else 9 if k == "armored" else 12 for k in options]
             queue.append(rng.choices(options, weights=weights)[0])
         if wave % 5 == 0:
             queue.append("boss")
@@ -376,7 +389,8 @@ class Battle:
         if self.spirit >= data["cost"] and self.summon_cooldowns[kind] <= 0 and len(self.allies) < 12 and self.state == "playing":
             self.spirit -= data["cost"]
             self.allies.append(Fighter(kind, 210, "ally", 1 + self.wave * .012))
-            self.summon_cooldowns[kind] = {"guard": 2.2, "archer": 3.6, "monk": 6.5}[kind]
+            self.summon_cooldowns[kind] = {"guard": 2.2, "archer": 3.6, "monk": 6.5, "captain": 9.5}[kind]
+            self.game.add_stat("summons")
             self.sounds.play("summon")
             for _ in range(10): self.particles.append(Particle(210, GROUND_Y - 45, data["color"], "orb"))
 
@@ -405,15 +419,16 @@ class Battle:
             elif event.key == pygame.K_1: self.summon("guard")
             elif event.key == pygame.K_2: self.summon("archer")
             elif event.key == pygame.K_3: self.summon("monk")
+            elif event.key == pygame.K_4: self.summon("captain")
             elif event.key == pygame.K_q: self.lightning()
             elif event.key == pygame.K_e: self.rally()
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
-            buttons = [(22, "guard"), (154, "archer"), (286, "monk")]
+            buttons = [(18, "guard"), (132, "archer"), (246, "monk"), (360, "captain")]
             for x, kind in buttons:
-                if pygame.Rect(x, 638, 122, 66).collidepoint(mx, my): self.summon(kind)
-            if pygame.Rect(430, 638, 150, 66).collidepoint(mx, my): self.lightning()
-            if pygame.Rect(590, 638, 150, 66).collidepoint(mx, my): self.rally()
+                if pygame.Rect(x, 638, 108, 66).collidepoint(mx, my): self.summon(kind)
+            if pygame.Rect(484, 638, 140, 66).collidepoint(mx, my): self.lightning()
+            if pygame.Rect(634, 638, 140, 66).collidepoint(mx, my): self.rally()
 
     def update(self, dt):
         if self.state == "intro":
@@ -449,6 +464,7 @@ class Battle:
         for e in list(self.enemies):
             if not e.alive:
                 self.killed += 1
+                self.game.add_stat("kills")
                 self.earned += int(e.reward * self.difficulty["reward"])
                 self.sounds.play("coin")
                 self.enemies.remove(e)
@@ -464,11 +480,13 @@ class Battle:
             bonus = int((35 + self.wave * 14 + stars * 15) * self.difficulty["reward"])
             self.earned += bonus
             self.game.save["coins"] += self.earned
+            self.game.add_stat("wins")
             if self.endless:
                 self.game.save["endless_best"] = max(self.game.save.get("endless_best", 0), self.wave)
             else:
                 self.game.save["unlocked"] = max(self.game.save["unlocked"], min(15, self.wave + 1))
                 self.game.save["best"][str(self.wave)] = max(stars, self.game.save["best"].get(str(self.wave), 0))
+            self.game.check_achievements()
             save_data(self.game.save)
 
     def bar(self, surf, x, y, w, value, maximum, color, label, font):
@@ -508,16 +526,16 @@ class Battle:
 
     def draw_hud(self, surf):
         pygame.draw.rect(surf, (10, 14, 25, 235), (0, 624, WIDTH, 96))
-        boxes = [(22, "1", "guard", "Ashigaru", 30, (55,150,185)), (154, "2", "archer", "Archer", 45, (165,100,205)), (286, "3", "monk", "Monk", 65, (225,175,75))]
+        boxes = [(18, "1", "guard", "Guard", 30, (55,150,185)), (132, "2", "archer", "Archer", 45, (165,100,205)), (246, "3", "monk", "Monk", 65, (225,175,75)), (360, "4", "captain", "Captain", 90, (195,68,74))]
         for x, key, kind, name, cost, color in boxes:
-            rect = pygame.Rect(x, 638, 122, 66)
+            rect = pygame.Rect(x, 638, 108, 66)
             ready = self.spirit >= cost and self.summon_cooldowns[kind] <= 0
             pygame.draw.rect(surf, (29, 40, 60) if ready else (30,30,36), rect, border_radius=8)
             pygame.draw.rect(surf, color, rect, 2, border_radius=8)
-            surf.blit(self.game.font_small.render(f"[{key}] {name}", True, (245,240,220)), (x+8, 646))
+            surf.blit(self.game.font_tiny.render(f"[{key}] {name}", True, (245,240,220)), (x+7, 648))
             status = f"{self.summon_cooldowns[kind]:.1f}s" if self.summon_cooldowns[kind] > 0 else f"{cost} spirit"
             surf.blit(self.game.font_tiny.render(status, True, color), (x+8, 674))
-        abilities = [(430, "Q", "STORM", self.lightning_cd, 150), (590, "E", "RALLY", self.rally_cd, 150)]
+        abilities = [(484, "Q", "STORM", self.lightning_cd, 140), (634, "E", "RALLY", self.rally_cd, 140)]
         for x, key, name, cd, w in abilities:
             rect = pygame.Rect(x, 638, w, 66)
             pygame.draw.rect(surf, (45,55,82), rect, border_radius=8)
@@ -526,7 +544,7 @@ class Battle:
             surf.blit(self.game.font_small.render(label, True, (245,240,220)), (x+12, 650))
             surf.blit(self.game.font_tiny.render("READY" if cd <= 0 else "RECHARGING", True, (180,190,205)), (x+12, 677))
         controls = self.game.font_tiny.render("A/D Move   SPACE Slash   F Bow   ESC Pause", True, (190, 197, 210))
-        surf.blit(controls, (820, 667))
+        surf.blit(controls, (805, 667))
 
     def draw_result(self, surf):
         shade = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA); shade.fill((5, 7, 15, 180)); surf.blit(shade, (0,0))
@@ -589,7 +607,8 @@ class Game:
             Button((490, 318, 300, 56), "CONTINUE CAMPAIGN", "continue", True),
             Button((490, 386, 300, 52), "CHOOSE WAVE", "waves"),
             Button((490, 450, 300, 52), "ENDLESS NIGHT", "endless"),
-            Button((490, 514, 300, 52), "UPGRADES", "upgrades"),
+            Button((490, 514, 145, 52), "UPGRADES", "upgrades"),
+            Button((645, 514, 145, 52), "ACHIEVEMENTS", "achievements"),
             Button((490, 578, 145, 48), "HOW TO PLAY", "help"),
             Button((645, 578, 145, 48), "QUIT", "quit"),
         ]
@@ -600,6 +619,7 @@ class Game:
         elif action == "waves": self.state = "waves"
         elif action == "endless": self.start_wave(16, endless=True)
         elif action == "upgrades": self.state = "upgrades"
+        elif action == "achievements": self.state = "achievements"
         elif action == "help": self.state = "help"
         elif action == "quit": self.running = False
 
@@ -613,6 +633,32 @@ class Game:
         self.save["difficulty"] = choices[(choices.index(current) + 1) % len(choices)]
         save_data(self.save)
         self.sounds.play("click")
+
+    def add_stat(self, name, amount=1):
+        self.save["stats"][name] = self.save["stats"].get(name, 0) + amount
+        self.check_achievements()
+
+    def check_achievements(self):
+        stats = self.save["stats"]
+        upgrade_total = sum(self.save["upgrades"].values())
+        conditions = {
+            "first_blood": stats.get("kills", 0) >= 1,
+            "horde_breaker": stats.get("kills", 0) >= 100,
+            "banner_caller": stats.get("summons", 0) >= 50,
+            "village_veteran": stats.get("wins", 0) >= 15,
+            "deep_night": self.save.get("endless_best", 0) >= 20,
+            "master_smith": upgrade_total >= 15,
+        }
+        claimed = self.save["achievements"]
+        for key, earned in conditions.items():
+            if earned and key not in claimed:
+                claimed.append(key)
+                name, _, reward = ACHIEVEMENTS[key]
+                self.save["coins"] += reward
+                self.toast = f"Achievement: {name}  +{reward} coins"
+                self.toast_timer = 3.0
+                self.sounds.play("win")
+        save_data(self.save)
 
     def handle_event(self, e):
         if e.type == pygame.QUIT: self.running = False
@@ -645,6 +691,7 @@ class Game:
                 if r.collidepoint(e.pos) and lvl < 5:
                     if self.save["coins"] >= cost:
                         self.save["coins"] -= cost; self.save["upgrades"][key] += 1; save_data(self.save); self.sounds.play("coin")
+                        self.check_achievements()
                     else: self.toast = "Not enough coins"; self.toast_timer = 1.5
         elif self.state == "pause" and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             if pygame.Rect(490,330,300,58).collidepoint(e.pos): self.state="battle"
@@ -663,7 +710,7 @@ class Game:
         coins = self.font_small.render(f"COINS  {self.save['coins']}", True, (246,194,86)); self.canvas.blit(coins,(25,25))
         difficulty = DIFFICULTIES[self.save.get("difficulty", "normal")]["label"]
         Button((1015,22,235,48), f"DIFFICULTY: {difficulty}").draw(self.canvas, self.font_tiny, pygame.mouse.get_pos())
-        best = self.font_tiny.render(f"Endless best: Night {self.save.get('endless_best', 0) - 15}" if self.save.get("endless_best", 0) else "Endless best: —", True, (190,197,210))
+        best = self.font_tiny.render(f"Endless best: Night {self.save.get('endless_best', 0) - 15}" if self.save.get("endless_best", 0) else "Endless best: None", True, (190,197,210))
         self.canvas.blit(best, (1050, 82))
         self.center_text(self.canvas, "Campaign progress is saved automatically", self.font_tiny, 680, (170,180,196))
 
@@ -693,10 +740,28 @@ class Game:
             txt="MAX" if lvl>=5 else f"BUY  {cost}"; t=self.font_small.render(txt,True,(245,238,218)); self.canvas.blit(t,t.get_rect(center=r.center))
         self.center_text(self.canvas,"ESC  Back",self.font_small,630,(180,190,205))
 
+    def draw_achievements(self):
+        self.title_backdrop(); self.panel(self.canvas,pygame.Rect(205,72,870,590))
+        self.center_text(self.canvas,"ACHIEVEMENTS",self.font_big,125,(246,194,86))
+        stats = self.save["stats"]
+        summary = f"Enemies {stats.get('kills',0)}     Allies summoned {stats.get('summons',0)}     Battles won {stats.get('wins',0)}"
+        self.center_text(self.canvas,summary,self.font_tiny,168,(185,199,218))
+        for i,(key,(name,desc,reward)) in enumerate(ACHIEVEMENTS.items()):
+            y=205+i*66; earned=key in self.save["achievements"]
+            rect=pygame.Rect(275,y,730,52)
+            pygame.draw.rect(self.canvas,(44,70,67) if earned else (31,39,55),rect,border_radius=9)
+            pygame.draw.rect(self.canvas,(95,205,135) if earned else (92,102,120),rect,2,border_radius=9)
+            mark="✓" if earned else "◇"
+            self.canvas.blit(self.font_small.render(f"{mark}  {name}",True,(235,238,220)),(294,y+7))
+            self.canvas.blit(self.font_tiny.render(desc,True,(170,185,205)),(565,y+8))
+            reward_text="CLAIMED" if earned else f"{reward} coins"
+            self.canvas.blit(self.font_tiny.render(reward_text,True,(240,185,70)),(880,y+28))
+        self.center_text(self.canvas,"ESC  Back",self.font_small,630,(180,190,205))
+
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
-        lines=[("MOVE","A / D or Left / Right"),("SWORD","SPACE or left mouse — strong at close range"),("BOW","F — ranged shot"),("SUMMON","1 Ashigaru  •  2 Archer  •  3 Monk"),("ABILITIES","Q Storm  •  E Rally heal"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("STRATEGY","Summons now have cooldowns, so timing matters."),("MODES","Clear 15 campaign waves, then test an endless run.")]
+        lines=[("MOVE","A / D or Left / Right"),("SWORD","SPACE or left mouse, strong at close range"),("BOW","F, ranged shot"),("SUMMON","1 Guard  •  2 Archer  •  3 Monk  •  4 Captain"),("ABILITIES","Q Storm  •  E Rally heal"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("STRATEGY","Summons have cooldowns, so timing matters."),("MODES","Clear 15 campaign waves, then test an endless run.")]
         for i,(a,b) in enumerate(lines):
             y=210+i*47; self.canvas.blit(self.font_small.render(a,True,(238,180,76)),(300,y)); self.canvas.blit(self.font_small.render(b,True,(232,230,222)),(475,y))
         self.center_text(self.canvas,"ESC  Back",self.font_small,595,(180,190,205))
@@ -712,6 +777,7 @@ class Game:
         if self.state=="menu": self.draw_menu()
         elif self.state=="waves": self.draw_waves()
         elif self.state=="upgrades": self.draw_upgrades()
+        elif self.state=="achievements": self.draw_achievements()
         elif self.state=="help": self.draw_help()
         elif self.state=="battle": self.battle.draw(self.canvas)
         elif self.state=="pause": self.draw_pause()
