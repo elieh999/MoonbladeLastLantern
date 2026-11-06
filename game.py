@@ -411,12 +411,15 @@ class Button:
 class Battle:
     def __init__(self, game, wave, endless=False):
         self.game, self.wave, self.endless = game, wave, endless
+        self.modifier = ("Moon Blessing", "Blood Moon", "Swift Shadows", "Fortified Gate")[(wave - 1) % 4]
         self.difficulty = DIFFICULTIES[game.save.get("difficulty", "normal")]
         self.sounds = game.sounds
         self.hero = Hero(game.save["upgrades"])
         self.allies, self.enemies, self.projectiles, self.particles = [], [], [], []
         up = game.save["upgrades"]
         self.gate_max = 700 + up["gate"] * 130
+        if self.modifier == "Fortified Gate":
+            self.gate_max += 150
         self.gate_hp = self.gate_max
         self.spirit_max = 100 + up["spirit"] * 12
         self.spirit = 55
@@ -513,7 +516,8 @@ class Battle:
             self.result_timer += dt
             return
         self.elapsed += dt
-        self.spirit = min(self.spirit_max, self.spirit + (7.2 + self.game.save["upgrades"]["spirit"] * .8) * dt)
+        spirit_bonus = 2.5 if self.modifier == "Moon Blessing" else 0
+        self.spirit = min(self.spirit_max, self.spirit + (7.2 + spirit_bonus + self.game.save["upgrades"]["spirit"] * .8) * dt)
         self.lightning_cd = max(0, self.lightning_cd - dt)
         self.rally_cd = max(0, self.rally_cd - dt)
         for kind in self.summon_cooldowns:
@@ -524,7 +528,12 @@ class Battle:
         if self.spawn_queue and self.spawn_timer <= 0:
             kind = self.spawn_queue.pop(0)
             scale = (1 + (self.wave - 1) * .105) * self.difficulty["enemy"]
-            self.enemies.append(Fighter(kind, 1235, "enemy", scale))
+            enemy = Fighter(kind, 1235, "enemy", scale)
+            if self.modifier == "Blood Moon":
+                enemy.damage *= 1.15
+            elif self.modifier == "Swift Shadows":
+                enemy.speed *= 1.15
+            self.enemies.append(enemy)
             self.spawn_timer = max(.55, 1.95 - self.wave * .06) + random.uniform(-.2, .35)
         for u in self.allies + self.enemies: u.update(dt, self)
         for p in self.projectiles:
@@ -595,6 +604,7 @@ class Battle:
             self.game.center_text(surf, title, self.game.font_title, 310, (244, 194, 89))
             subtitle = "THE DREAD DAIMYO APPROACHES" if self.wave % 5 == 0 else "THE HOLLOW MARCH"
             self.game.center_text(surf, subtitle, self.game.font, 365)
+            self.game.center_text(surf, self.modifier.upper(), self.game.font_tiny, 400, (185,199,218))
         if self.state in ("won", "lost"):
             self.draw_result(surf)
 
