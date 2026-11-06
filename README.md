@@ -1,10 +1,10 @@
 # Moonblade: Last Lantern
 
-Moonblade is a small hero controlled lane defense game for Windows. You control a wandering ronin, fight the front line yourself, summon allies with a regenerating spirit meter, and protect the last village gate from an undead army.
+Moonblade is a defense game for Windows. You control a ronin, fight enemies, summon allies, and protect the village gate.
 
 ![Moonblade battle](docs/battle.png)
 
-The project grew out of missing games such as *Samurai vs Zombies Defense* after they disappeared from modern storefronts. It is not a remake and does not use Glu's code, names, characters, audio, or extracted assets. The goal is to build a new game around the same combination of direct combat and lane defense strategy.
+The game is inspired by *Samurai vs Zombies Defense*. That game is no longer available on modern stores, so this project tries to bring back the same kind of fun with new code and original art.
 
 ## What is playable
 
@@ -52,10 +52,10 @@ The packaged game stores progress in `%LOCALAPPDATA%\MoonbladeDefense\save.json`
 
 ## Project status
 
-This is an early complete prototype rather than a commercial size game. The current build has a full campaign loop, upgrades, bosses, difficulty options, achievements, and endless play. Future work can add animated sprite art, more allies, additional battlefields, controller support, and richer music and sound.
+The game is still in development. It has a full campaign, upgrades, bosses, difficulty options, achievements, and an endless mode. More allies, maps, animation, controller support, music, and sound will come later.
 
 ## License
 
 The source code is available under the MIT License. The painted battlefield image in `assets/` is included for use with this project; please do not redistribute it as a standalone asset pack.
 
-Moonblade is an independent project inspired by a missing game and is not affiliated with or endorsed by Glu Mobile or Electronic Arts.
+Moonblade is not connected to Glu Mobile or Electronic Arts.
