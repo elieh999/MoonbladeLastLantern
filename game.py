@@ -696,8 +696,9 @@ class Game:
             Button((490, 318, 300, 56), "CONTINUE CAMPAIGN", "continue", True),
             Button((490, 386, 300, 52), "CHOOSE WAVE", "waves"),
             Button((490, 450, 300, 52), "ENDLESS NIGHT", "endless"),
-            Button((490, 514, 145, 52), "UPGRADES", "upgrades"),
-            Button((645, 514, 145, 52), "ACHIEVEMENTS", "achievements"),
+            Button((410, 514, 145, 52), "UPGRADES", "upgrades"),
+            Button((568, 514, 145, 52), "BESTIARY", "bestiary"),
+            Button((726, 514, 145, 52), "ACHIEVEMENTS", "achievements"),
             Button((490, 578, 145, 48), "HOW TO PLAY", "help"),
             Button((645, 578, 145, 48), "QUIT", "quit"),
         ]
@@ -708,6 +709,7 @@ class Game:
         elif action == "waves": self.state = "waves"
         elif action == "endless": self.start_wave(16, endless=True)
         elif action == "upgrades": self.state = "upgrades"
+        elif action == "bestiary": self.state = "bestiary"
         elif action == "achievements": self.state = "achievements"
         elif action == "help": self.state = "help"
         elif action == "quit": self.running = False
@@ -870,6 +872,35 @@ class Game:
             self.canvas.blit(self.font_tiny.render(reward_text,True,(240,185,70)),(880,y+28))
         self.center_text(self.canvas,"ESC  Back",self.font_small,630,(180,190,205))
 
+    def draw_bestiary(self):
+        self.title_backdrop(); self.panel(self.canvas,pygame.Rect(150,68,980,598))
+        self.center_text(self.canvas,"HOLLOW BESTIARY",self.font_big,120,(246,194,86))
+        details = {
+            "walker": ("Basic front line enemy", "Wave 1"),
+            "runner": ("Fast attacker with low health", "Wave 2"),
+            "brute": ("Slow enemy with heavy strikes", "Wave 4"),
+            "shaman": ("Casts magic from a distance", "Wave 6"),
+            "armored": ("Very tough defensive warrior", "Wave 8"),
+            "boss": ("Leader of every fifth attack", "Wave 5"),
+        }
+        for i, (kind, data) in enumerate(ENEMY_DATA.items()):
+            col, row = i % 2, i // 2
+            x, y = 225 + col * 440, 165 + row * 135
+            rect = pygame.Rect(x, y, 390, 112)
+            pygame.draw.rect(self.canvas,(29,40,58),rect,border_radius=12)
+            pygame.draw.rect(self.canvas,data["color"],rect,2,border_radius=12)
+            sprite = CHARACTER_SPRITES[kind]
+            height = 92
+            width = int(sprite.get_width() * height / sprite.get_height())
+            image = pygame.transform.smoothscale(sprite,(width,height))
+            self.canvas.blit(image,image.get_rect(midbottom=(x+65,y+105)))
+            desc, first_wave = details[kind]
+            self.canvas.blit(self.font_small.render(data["name"],True,(245,238,218)),(x+125,y+17))
+            self.canvas.blit(self.font_tiny.render(desc,True,(180,192,208)),(x+125,y+51))
+            stats = f"Health {data['hp']}   Damage {data['dmg']}   {first_wave}"
+            self.canvas.blit(self.font_tiny.render(stats,True,(235,180,78)),(x+125,y+77))
+        self.center_text(self.canvas,"ESC  Back",self.font_small,630,(180,190,205))
+
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
@@ -890,6 +921,7 @@ class Game:
         elif self.state=="waves": self.draw_waves()
         elif self.state=="upgrades": self.draw_upgrades()
         elif self.state=="achievements": self.draw_achievements()
+        elif self.state=="bestiary": self.draw_bestiary()
         elif self.state=="help": self.draw_help()
         elif self.state=="battle": self.battle.draw(self.canvas)
         elif self.state=="pause": self.draw_pause()
