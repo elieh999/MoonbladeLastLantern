@@ -43,7 +43,10 @@ The bestiary explains each enemy's role, starting wave, health, and damage.
 * Cast Storm with `Q`
 * Use Rally with `E`
 * Pause or return with `Esc`
+* Restart the current wave with `R` while paused
 * Toggle sound with `M`
+* Change sound volume with `[` and `]`
+* Toggle screen shake with `N`
 * Toggle full screen with `F11`
 
 Controller buttons are listed inside the How to Play screen.

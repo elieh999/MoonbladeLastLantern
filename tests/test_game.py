@@ -51,6 +51,16 @@ class MoonbladeTests(unittest.TestCase):
         self.assertEqual(game.grid_index(7, 0, 1, 5, 8), 7)
         self.assertEqual(game.grid_index(1, 0, -1, 5, 8), 0)
 
+    def test_restart_from_pause_keeps_wave_and_mode(self):
+        self.game.battle = game.Battle(self.game, 18, endless=True)
+        self.game.state = "pause"
+        previous = self.game.battle
+        self.game.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_r))
+        self.assertEqual(self.game.state, "battle")
+        self.assertIsNot(self.game.battle, previous)
+        self.assertEqual(self.game.battle.wave, 18)
+        self.assertIs(self.game.battle.endless, True)
+
     def test_enemy_scaling_changes_health_and_damage(self):
         normal = game.Fighter("walker", 1000, "enemy", 1)
         stronger = game.Fighter("walker", 1000, "enemy", 2)

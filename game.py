@@ -917,6 +917,9 @@ class Game:
                 if self.wave_selection != previous:
                     self.sounds.play("click")
                     return
+            if self.state == "pause" and e.key == pygame.K_r and self.battle is not None:
+                self.start_wave(self.battle.wave, self.battle.endless)
+                return
             if self.state == "battle" and self.battle.state == "won" and e.key == pygame.K_RETURN and (self.battle.endless or self.battle.wave < 15):
                 self.start_wave(self.battle.wave + 1, self.battle.endless); return
             if self.state == "battle" and self.battle.state == "lost" and e.key == pygame.K_r:
@@ -958,7 +961,9 @@ class Game:
                     else: self.toast = "Not enough coins"; self.toast_timer = 1.5
         elif self.state == "pause" and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             if pygame.Rect(490,330,300,58).collidepoint(e.pos): self.state="battle"
-            if pygame.Rect(490,405,300,58).collidepoint(e.pos): self.state="menu"
+            if pygame.Rect(490,400,300,58).collidepoint(e.pos) and self.battle is not None:
+                self.start_wave(self.battle.wave, self.battle.endless)
+            if pygame.Rect(490,470,300,58).collidepoint(e.pos): self.state="menu"
 
     def update(self, dt):
         self.toast_timer = max(0, self.toast_timer-dt)
@@ -1066,10 +1071,15 @@ class Game:
 
     def draw_pause(self):
         self.battle.draw(self.canvas)
-        shade=pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA); shade.fill((5,8,18,185)); self.canvas.blit(shade,(0,0)); self.panel(self.canvas,pygame.Rect(420,210,440,300))
+        shade=pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA); shade.fill((5,8,18,185)); self.canvas.blit(shade,(0,0)); self.panel(self.canvas,pygame.Rect(420,190,440,390))
         self.center_text(self.canvas,"PAUSED",self.font_big,270,(246,194,86))
-        for r,text in [(pygame.Rect(490,330,300,58),"RESUME"),(pygame.Rect(490,405,300,58),"RETURN TO VILLAGE")]:
+        for r,text in [
+            (pygame.Rect(490,330,300,58),"RESUME"),
+            (pygame.Rect(490,400,300,58),"RESTART WAVE"),
+            (pygame.Rect(490,470,300,58),"RETURN TO VILLAGE"),
+        ]:
             Button(r,text).draw(self.canvas,self.font_small,pygame.mouse.get_pos())
+        self.center_text(self.canvas,"ESC  Resume     R  Restart",self.font_tiny,550,(180,190,205))
 
     def draw(self):
         if self.state=="menu": self.draw_menu()
