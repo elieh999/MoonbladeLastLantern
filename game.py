@@ -39,29 +39,82 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
+def default_save():
+    return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
+            "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
+            "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
+            "sound": True}
+
+
+def validated_save(data):
+    save = default_save()
+    if not isinstance(data, dict):
+        return save
+
+    def safe_int(value, fallback, low=0, high=None):
+        if isinstance(value, bool) or not isinstance(value, int):
+            return fallback
+        value = max(low, value)
+        return min(value, high) if high is not None else value
+
+    save["unlocked"] = safe_int(data.get("unlocked"), 1, 1, 15)
+    save["coins"] = safe_int(data.get("coins"), 250)
+    save["endless_best"] = safe_int(data.get("endless_best"), 0)
+    if data.get("difficulty") in DIFFICULTIES:
+        save["difficulty"] = data["difficulty"]
+    if isinstance(data.get("sound"), bool):
+        save["sound"] = data["sound"]
+
+    upgrades = data.get("upgrades")
+    if isinstance(upgrades, dict):
+        for name in save["upgrades"]:
+            save["upgrades"][name] = safe_int(upgrades.get(name), 0, 0, 20)
+
+    stats = data.get("stats")
+    if isinstance(stats, dict):
+        for name in save["stats"]:
+            save["stats"][name] = safe_int(stats.get(name), 0)
+
+    best = data.get("best")
+    if isinstance(best, dict):
+        for wave, stars in best.items():
+            if str(wave).isdigit() and 1 <= int(wave) <= 15:
+                save["best"][str(int(wave))] = safe_int(stars, 0, 0, 3)
+
+    achievements = data.get("achievements")
+    if isinstance(achievements, list):
+        save["achievements"] = list(dict.fromkeys(
+            name for name in achievements if isinstance(name, str) and name in ACHIEVEMENTS
+        ))
+    return save
+
+
 def load_save():
-    default = {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
-               "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
-               "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
-               "sound": True}
-    try:
-        with open(SAVE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        default.update({k: data[k] for k in ("unlocked", "coins", "best", "difficulty", "endless_best", "achievements", "sound") if k in data})
-        default["upgrades"].update(data.get("upgrades", {}))
-        default["stats"].update(data.get("stats", {}))
-    except (OSError, ValueError, TypeError):
-        pass
-    return default
+    for filename in (SAVE_FILE, SAVE_FILE + ".bak"):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                return validated_save(json.load(f))
+        except (OSError, ValueError, TypeError):
+            continue
+    return default_save()
 
 
 def save_data(data):
+    temporary = SAVE_FILE + ".tmp"
     try:
         os.makedirs(SAVE_DIR, exist_ok=True)
-        with open(SAVE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+        with open(temporary, "w", encoding="utf-8") as f:
+            json.dump(validated_save(data), f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        if os.path.exists(SAVE_FILE):
+            os.replace(SAVE_FILE, SAVE_FILE + ".bak")
+        os.replace(temporary, SAVE_FILE)
     except OSError:
-        pass
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
 
 
 class SoundBank:
