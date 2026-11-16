@@ -43,7 +43,7 @@ def default_save():
     return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
             "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
-            "sound": True}
+            "sound": True, "reduced_motion": False}
 
 
 def validated_save(data):
@@ -64,6 +64,8 @@ def validated_save(data):
         save["difficulty"] = data["difficulty"]
     if isinstance(data.get("sound"), bool):
         save["sound"] = data["sound"]
+    if isinstance(data.get("reduced_motion"), bool):
+        save["reduced_motion"] = data["reduced_motion"]
 
     upgrades = data.get("upgrades")
     if isinstance(upgrades, dict):
@@ -641,8 +643,9 @@ class Battle:
         surf.blit(text, (x + 8, y + 2))
 
     def draw(self, surf):
-        ox = random.randint(-int(self.shake), int(self.shake)) if self.shake else 0
-        oy = random.randint(-int(self.shake / 2), int(self.shake / 2)) if self.shake else 0
+        visible_shake = 0 if self.game.save.get("reduced_motion", False) else self.shake
+        ox = random.randint(-int(visible_shake), int(visible_shake)) if visible_shake else 0
+        oy = random.randint(-int(visible_shake / 2), int(visible_shake / 2)) if visible_shake else 0
         surf.blit(self.game.background, (ox, oy))
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((12, 18, 38, 35))
@@ -844,6 +847,12 @@ class Game:
                 self.toast_timer = 1.5
                 save_data(self.save)
                 return
+            if e.key == pygame.K_n:
+                self.save["reduced_motion"] = not self.save.get("reduced_motion", False)
+                self.toast = "Screen shake off" if self.save["reduced_motion"] else "Screen shake on"
+                self.toast_timer = 1.5
+                save_data(self.save)
+                return
             if e.key == pygame.K_F11:
                 self.fullscreen = not self.fullscreen
                 flags = pygame.FULLSCREEN if self.fullscreen else 0
@@ -901,7 +910,8 @@ class Game:
         best = self.font_tiny.render(f"Endless best: Night {self.save.get('endless_best', 0) - 15}" if self.save.get("endless_best", 0) else "Endless best: None", True, (190,197,210))
         self.canvas.blit(best, (1050, 82))
         sound = "ON" if self.save.get("sound", True) else "OFF"
-        self.center_text(self.canvas, f"M  Sound {sound}     F11  Full screen     Progress saves automatically", self.font_tiny, 680, (170,180,196))
+        shake = "OFF" if self.save.get("reduced_motion", False) else "ON"
+        self.center_text(self.canvas, f"M  Sound {sound}     N  Screen shake {shake}     F11  Full screen     Progress saves automatically", self.font_tiny, 680, (170,180,196))
 
     def draw_waves(self):
         self.title_backdrop(); self.panel(self.canvas, pygame.Rect(210,110,860,510))
@@ -979,7 +989,7 @@ class Game:
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
-        lines=[("MOVE","A / D, arrows, or controller stick"),("SWORD","SPACE, left mouse, or controller A"),("BOW","F or controller X"),("SUMMON","1 to 4  •  controller shoulder and center buttons"),("ABILITIES","Q Storm  •  E Rally  •  controller Y and B"),("OPTIONS","M Sound  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
+        lines=[("MOVE","A / D, arrows, or controller stick"),("SWORD","SPACE, left mouse, or controller A"),("BOW","F or controller X"),("SUMMON","1 to 4  •  controller shoulder and center buttons"),("ABILITIES","Q Storm  •  E Rally  •  controller Y and B"),("OPTIONS","M Sound  •  N Screen shake  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
         for i,(a,b) in enumerate(lines):
             y=210+i*47; self.canvas.blit(self.font_small.render(a,True,(238,180,76)),(300,y)); self.canvas.blit(self.font_small.render(b,True,(232,230,222)),(475,y))
         self.center_text(self.canvas,"ESC  Back",self.font_small,595,(180,190,205))

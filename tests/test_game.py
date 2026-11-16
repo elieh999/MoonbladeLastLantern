@@ -81,6 +81,7 @@ class MoonbladeTests(unittest.TestCase):
             "coins": -40,
             "difficulty": "impossible",
             "sound": "yes",
+            "reduced_motion": True,
             "upgrades": {"blade": 999},
             "best": {"1": 8, "99": 3},
             "achievements": ["first_blood", "first_blood", "unknown"],
@@ -89,6 +90,7 @@ class MoonbladeTests(unittest.TestCase):
         self.assertEqual(loaded["coins"], 0)
         self.assertEqual(loaded["difficulty"], "normal")
         self.assertIs(loaded["sound"], True)
+        self.assertIs(loaded["reduced_motion"], True)
         self.assertEqual(loaded["upgrades"]["blade"], 20)
         self.assertEqual(loaded["best"], {"1": 3})
         self.assertEqual(loaded["achievements"], ["first_blood"])
