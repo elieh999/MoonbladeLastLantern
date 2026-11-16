@@ -42,6 +42,15 @@ class MoonbladeTests(unittest.TestCase):
         names = [game.Battle(self.game, wave).modifier for wave in range(1, 5)]
         self.assertEqual(names, ["Moon Blessing", "Blood Moon", "Swift Shadows", "Fortified Gate"])
 
+    def test_menu_selection_wraps_in_both_directions(self):
+        self.assertEqual(game.wrapped_index(7, 1, 8), 0)
+        self.assertEqual(game.wrapped_index(0, -1, 8), 7)
+
+    def test_wave_grid_navigation_stays_in_unlocked_range(self):
+        self.assertEqual(game.grid_index(4, 1, 0, 5, 8), 5)
+        self.assertEqual(game.grid_index(7, 0, 1, 5, 8), 7)
+        self.assertEqual(game.grid_index(1, 0, -1, 5, 8), 0)
+
     def test_enemy_scaling_changes_health_and_damage(self):
         normal = game.Fighter("walker", 1000, "enemy", 1)
         stronger = game.Fighter("walker", 1000, "enemy", 2)

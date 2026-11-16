@@ -39,6 +39,16 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
+def wrapped_index(current, direction, count):
+    return (current + direction) % count if count > 0 else 0
+
+
+def grid_index(current, horizontal, vertical, columns, count):
+    if count <= 0:
+        return 0
+    return int(clamp(current + horizontal + vertical * columns, 0, count - 1))
+
+
 def default_save():
     return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
@@ -758,6 +768,8 @@ class Game:
         self.running = True
         self.toast = ""
         self.toast_timer = 0
+        self.menu_selection = 0
+        self.wave_selection = max(0, self.save["unlocked"] - 1)
 
     def panel(self, surf, rect):
         layer = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -788,7 +800,9 @@ class Game:
     def activate(self, action):
         self.sounds.play("click")
         if action == "continue": self.start_wave(self.save["unlocked"])
-        elif action == "waves": self.state = "waves"
+        elif action == "waves":
+            self.wave_selection = max(0, self.save["unlocked"] - 1)
+            self.state = "waves"
         elif action == "endless": self.start_wave(16, endless=True)
         elif action == "upgrades": self.state = "upgrades"
         elif action == "bestiary": self.state = "bestiary"
@@ -875,6 +889,34 @@ class Game:
                 self.toast = "Full screen" if self.fullscreen else "Windowed"
                 self.toast_timer = 1.5
                 return
+            if self.state == "menu":
+                if e.key in (pygame.K_DOWN, pygame.K_TAB):
+                    self.menu_selection = wrapped_index(self.menu_selection, 1, len(self.menu_buttons()))
+                    self.sounds.play("click")
+                    return
+                if e.key == pygame.K_UP:
+                    self.menu_selection = wrapped_index(self.menu_selection, -1, len(self.menu_buttons()))
+                    self.sounds.play("click")
+                    return
+                if e.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.activate(self.menu_buttons()[self.menu_selection].action)
+                    return
+            if self.state == "waves":
+                previous = self.wave_selection
+                if e.key == pygame.K_LEFT:
+                    self.wave_selection = grid_index(self.wave_selection, -1, 0, 5, self.save["unlocked"])
+                elif e.key == pygame.K_RIGHT:
+                    self.wave_selection = grid_index(self.wave_selection, 1, 0, 5, self.save["unlocked"])
+                elif e.key == pygame.K_UP:
+                    self.wave_selection = grid_index(self.wave_selection, 0, -1, 5, self.save["unlocked"])
+                elif e.key == pygame.K_DOWN:
+                    self.wave_selection = grid_index(self.wave_selection, 0, 1, 5, self.save["unlocked"])
+                elif e.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self.start_wave(self.wave_selection + 1)
+                    return
+                if self.wave_selection != previous:
+                    self.sounds.play("click")
+                    return
             if self.state == "battle" and self.battle.state == "won" and e.key == pygame.K_RETURN and (self.battle.endless or self.battle.wave < 15):
                 self.start_wave(self.battle.wave + 1, self.battle.endless); return
             if self.state == "battle" and self.battle.state == "lost" and e.key == pygame.K_r:
@@ -885,16 +927,25 @@ class Game:
                 elif self.state != "menu": self.state = "menu"
                 return
         if self.state == "battle": self.battle.handle_event(e)
+        if self.state == "menu" and e.type == pygame.MOUSEMOTION:
+            for index, button in enumerate(self.menu_buttons()):
+                if button.rect.collidepoint(e.pos):
+                    self.menu_selection = index
+                    break
         elif self.state == "menu" and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             if pygame.Rect(1015, 22, 235, 48).collidepoint(e.pos):
                 self.cycle_difficulty(); return
-            for b in self.menu_buttons():
-                if b.rect.collidepoint(e.pos): self.activate(b.action)
+            for index, b in enumerate(self.menu_buttons()):
+                if b.rect.collidepoint(e.pos):
+                    self.menu_selection = index
+                    self.activate(b.action)
         elif self.state == "waves" and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             for i in range(1,16):
                 col, row = (i-1)%5, (i-1)//5
                 r = pygame.Rect(280+col*150, 265+row*105, 118, 78)
-                if r.collidepoint(e.pos) and i <= self.save["unlocked"]: self.start_wave(i)
+                if r.collidepoint(e.pos) and i <= self.save["unlocked"]:
+                    self.wave_selection = i - 1
+                    self.start_wave(i)
         elif self.state == "upgrades" and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             keys = list(self.save["upgrades"])
             for i,key in enumerate(keys):
@@ -918,7 +969,10 @@ class Game:
         self.center_text(self.canvas, "MOONBLADE", self.font_title, 135, (246,194,86))
         self.center_text(self.canvas, "LAST LANTERN", self.font_big, 200, (235,230,220))
         self.center_text(self.canvas, "An original lane-defense adventure", self.font_small, 250, (185,199,218))
-        for b in self.menu_buttons(): b.draw(self.canvas, self.font_small, pygame.mouse.get_pos())
+        mouse = pygame.mouse.get_pos()
+        for index, button in enumerate(self.menu_buttons()):
+            pointer = button.rect.center if index == self.menu_selection else mouse
+            button.draw(self.canvas, self.font_small, pointer)
         coins = self.font_small.render(f"COINS  {self.save['coins']}", True, (246,194,86)); self.canvas.blit(coins,(25,25))
         difficulty = DIFFICULTIES[self.save.get("difficulty", "normal")]["label"]
         Button((1015,22,235,48), f"DIFFICULTY: {difficulty}").draw(self.canvas, self.font_tiny, pygame.mouse.get_pos())
@@ -935,10 +989,11 @@ class Game:
             col,row=(i-1)%5,(i-1)//5; r=pygame.Rect(280+col*150,265+row*105,118,78)
             unlocked=i<=self.save["unlocked"]
             pygame.draw.rect(self.canvas,(40,58,82) if unlocked else (30,31,39),r,border_radius=10)
-            pygame.draw.rect(self.canvas,(235,185,80) if unlocked else (80,80,88),r,2,border_radius=10)
+            border = (255, 222, 116) if i - 1 == self.wave_selection else ((235,185,80) if unlocked else (80,80,88))
+            pygame.draw.rect(self.canvas,border,r,4 if i - 1 == self.wave_selection else 2,border_radius=10)
             label=self.font.render(str(i) if unlocked else "×",True,(245,238,218) if unlocked else (100,100,108)); self.canvas.blit(label,label.get_rect(center=(r.centerx,r.centery-8)))
             stars=self.save["best"].get(str(i),0); s=self.font_tiny.render("★"*stars+"☆"*(3-stars),True,(240,185,70)); self.canvas.blit(s,s.get_rect(center=(r.centerx,r.centery+24)))
-        self.center_text(self.canvas,"ESC  Back",self.font_small,585,(180,190,205))
+        self.center_text(self.canvas,"ARROWS  Select     ENTER  Play     ESC  Back",self.font_small,585,(180,190,205))
 
     def draw_upgrades(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(220,80,840,580))
