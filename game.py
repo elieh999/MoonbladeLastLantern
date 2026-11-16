@@ -43,7 +43,7 @@ def default_save():
     return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
             "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
-            "sound": True, "reduced_motion": False}
+            "sound": True, "sound_volume": 8, "reduced_motion": False}
 
 
 def validated_save(data):
@@ -64,6 +64,7 @@ def validated_save(data):
         save["difficulty"] = data["difficulty"]
     if isinstance(data.get("sound"), bool):
         save["sound"] = data["sound"]
+    save["sound_volume"] = safe_int(data.get("sound_volume"), 8, 0, 10)
     if isinstance(data.get("reduced_motion"), bool):
         save["reduced_motion"] = data["reduced_motion"]
 
@@ -123,6 +124,7 @@ class SoundBank:
     def __init__(self):
         self.ok = pygame.mixer.get_init() is not None
         self.enabled = True
+        self.volume = .8
         self.cache = {}
 
     def tone(self, name, freq, duration, volume=.18, wave="sine"):
@@ -160,6 +162,7 @@ class SoundBank:
         if name in specs:
             snd = self.tone(name, *specs[name])
             if snd:
+                snd.set_volume(self.volume)
                 snd.play()
 
 
@@ -746,6 +749,7 @@ class Game:
         self.save = load_save()
         self.sounds = SoundBank()
         self.sounds.enabled = self.save.get("sound", True)
+        self.sounds.volume = self.save.get("sound_volume", 8) / 10
         self.fullscreen = False
         self.controller = pygame.joystick.Joystick(0) if pygame.joystick.get_count() else None
         self.state = "menu"
@@ -803,6 +807,14 @@ class Game:
         save_data(self.save)
         self.sounds.play("click")
 
+    def adjust_sound_volume(self, direction):
+        level = clamp(self.save.get("sound_volume", 8) + direction, 0, 10)
+        self.save["sound_volume"] = level
+        self.sounds.volume = level / 10
+        self.toast = f"Sound volume {level * 10}%"
+        self.toast_timer = 1.5
+        save_data(self.save)
+
     def add_stat(self, name, amount=1):
         self.save["stats"][name] = self.save["stats"].get(name, 0) + amount
         self.check_achievements()
@@ -852,6 +864,9 @@ class Game:
                 self.toast = "Screen shake off" if self.save["reduced_motion"] else "Screen shake on"
                 self.toast_timer = 1.5
                 save_data(self.save)
+                return
+            if e.key in (pygame.K_LEFTBRACKET, pygame.K_RIGHTBRACKET):
+                self.adjust_sound_volume(-1 if e.key == pygame.K_LEFTBRACKET else 1)
                 return
             if e.key == pygame.K_F11:
                 self.fullscreen = not self.fullscreen
@@ -909,9 +924,9 @@ class Game:
         Button((1015,22,235,48), f"DIFFICULTY: {difficulty}").draw(self.canvas, self.font_tiny, pygame.mouse.get_pos())
         best = self.font_tiny.render(f"Endless best: Night {self.save.get('endless_best', 0) - 15}" if self.save.get("endless_best", 0) else "Endless best: None", True, (190,197,210))
         self.canvas.blit(best, (1050, 82))
-        sound = "ON" if self.save.get("sound", True) else "OFF"
+        sound = f"{self.save.get('sound_volume', 8) * 10}%" if self.save.get("sound", True) else "OFF"
         shake = "OFF" if self.save.get("reduced_motion", False) else "ON"
-        self.center_text(self.canvas, f"M  Sound {sound}     N  Screen shake {shake}     F11  Full screen     Progress saves automatically", self.font_tiny, 680, (170,180,196))
+        self.center_text(self.canvas, f"M  Sound {sound}     [ ]  Volume     N  Screen shake {shake}     F11  Full screen", self.font_tiny, 680, (170,180,196))
 
     def draw_waves(self):
         self.title_backdrop(); self.panel(self.canvas, pygame.Rect(210,110,860,510))
@@ -989,7 +1004,7 @@ class Game:
     def draw_help(self):
         self.title_backdrop(); self.panel(self.canvas,pygame.Rect(210,90,860,540))
         self.center_text(self.canvas,"HOW TO PLAY",self.font_big,145,(246,194,86))
-        lines=[("MOVE","A / D, arrows, or controller stick"),("SWORD","SPACE, left mouse, or controller A"),("BOW","F or controller X"),("SUMMON","1 to 4  •  controller shoulder and center buttons"),("ABILITIES","Q Storm  •  E Rally  •  controller Y and B"),("OPTIONS","M Sound  •  N Screen shake  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
+        lines=[("MOVE","A / D, arrows, or controller stick"),("SWORD","SPACE, left mouse, or controller A"),("BOW","F or controller X"),("SUMMON","1 to 4  •  controller shoulder and center buttons"),("ABILITIES","Q Storm  •  E Rally  •  controller Y and B"),("OPTIONS","M Sound  •  [ ] Volume  •  N Screen shake  •  F11 Full screen"),("OBJECTIVE","Defeat every Hollow before your hero or gate falls."),("MODES","Clear 15 campaign waves, then test an endless run.")]
         for i,(a,b) in enumerate(lines):
             y=210+i*47; self.canvas.blit(self.font_small.render(a,True,(238,180,76)),(300,y)); self.canvas.blit(self.font_small.render(b,True,(232,230,222)),(475,y))
         self.center_text(self.canvas,"ESC  Back",self.font_small,595,(180,190,205))
