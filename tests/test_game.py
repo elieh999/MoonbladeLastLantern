@@ -63,6 +63,10 @@ class MoonbladeTests(unittest.TestCase):
         self.assertAlmostEqual(game.frame_delta(16), 0.016)
         self.assertEqual(game.frame_delta(5000), 0.035)
 
+    def test_wave_summary_counts_enemy_types(self):
+        summary = game.wave_summary(["walker", "runner", "walker", "boss"])
+        self.assertEqual(summary, {"walker": 2, "runner": 1, "boss": 1})
+
     def test_restart_from_pause_keeps_wave_and_mode(self):
         self.game.battle = game.Battle(self.game, 18, endless=True)
         self.game.state = "pause"

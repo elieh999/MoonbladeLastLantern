@@ -64,6 +64,14 @@ def frame_delta(milliseconds, maximum=.035):
     return min(maximum, max(0.0, milliseconds / 1000.0))
 
 
+def wave_summary(queue):
+    """Return stable enemy counts for a wave preview or other UI."""
+    counts = {}
+    for kind in queue:
+        counts[kind] = counts.get(kind, 0) + 1
+    return counts
+
+
 def default_save():
     return {"save_version": SAVE_VERSION, "unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
@@ -1014,6 +1022,10 @@ class Game:
             pygame.draw.rect(self.canvas,border,r,4 if i - 1 == self.wave_selection else 2,border_radius=10)
             label=self.font.render(str(i) if unlocked else "×",True,(245,238,218) if unlocked else (100,100,108)); self.canvas.blit(label,label.get_rect(center=(r.centerx,r.centery-8)))
             stars=self.save["best"].get(str(i),0); s=self.font_tiny.render("★"*stars+"☆"*(3-stars),True,(240,185,70)); self.canvas.blit(s,s.get_rect(center=(r.centerx,r.centery+24)))
+        selected_wave = self.wave_selection + 1
+        preview = wave_summary(Battle.make_wave(None, selected_wave))
+        preview_text = "  ".join(f"{kind.title()} {amount}" for kind, amount in preview.items())
+        self.center_text(self.canvas, f"Wave {selected_wave}: {preview_text}", self.font_tiny, 555, (200, 210, 225))
         self.center_text(self.canvas,"ARROWS  Select     ENTER  Play     ESC  Back",self.font_small,585,(180,190,205))
 
     def draw_upgrades(self):
