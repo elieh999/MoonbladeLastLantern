@@ -58,6 +58,11 @@ def stick_value(axis, deadzone=.2):
     return math.copysign(scaled * scaled, axis)
 
 
+def frame_delta(milliseconds, maximum=.035):
+    """Keep focus-loss or debugger pauses from teleporting gameplay state."""
+    return min(maximum, max(0.0, milliseconds / 1000.0))
+
+
 def default_save():
     return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
@@ -1105,7 +1110,7 @@ class Game:
 
     def run(self):
         while self.running:
-            dt=min(.035,self.clock.tick(FPS)/1000)
+            dt=frame_delta(self.clock.tick(FPS))
             for e in pygame.event.get(): self.handle_event(e)
             self.update(dt); self.draw()
         save_data(self.save); pygame.quit()

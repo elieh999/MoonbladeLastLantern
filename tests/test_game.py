@@ -58,6 +58,11 @@ class MoonbladeTests(unittest.TestCase):
         self.assertAlmostEqual(game.stick_value(1.0), 1.0)
         self.assertAlmostEqual(game.stick_value(-1.0), -1.0)
 
+    def test_frame_delta_is_clamped_after_focus_loss(self):
+        self.assertEqual(game.frame_delta(-10), 0.0)
+        self.assertAlmostEqual(game.frame_delta(16), 0.016)
+        self.assertEqual(game.frame_delta(5000), 0.035)
+
     def test_restart_from_pause_keeps_wave_and_mode(self):
         self.game.battle = game.Battle(self.game, 18, endless=True)
         self.game.state = "pause"
