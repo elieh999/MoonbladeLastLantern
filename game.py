@@ -49,6 +49,15 @@ def grid_index(current, horizontal, vertical, columns, count):
     return int(clamp(current + horizontal + vertical * columns, 0, count - 1))
 
 
+def stick_value(axis, deadzone=.2):
+    """Remove controller drift while preserving a smooth, full-speed outer range."""
+    magnitude = abs(axis)
+    if magnitude <= deadzone:
+        return 0.0
+    scaled = (magnitude - deadzone) / (1.0 - deadzone)
+    return math.copysign(scaled * scaled, axis)
+
+
 def default_save():
     return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
@@ -408,8 +417,8 @@ class Hero:
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]: move += 1
         controller = battle.game.controller
         if controller and controller.get_init():
-            axis = controller.get_axis(0)
-            if abs(axis) > .2:
+            axis = stick_value(controller.get_axis(0))
+            if axis:
                 move = axis
         if move:
             self.facing = move

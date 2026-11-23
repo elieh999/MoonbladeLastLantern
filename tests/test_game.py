@@ -51,6 +51,13 @@ class MoonbladeTests(unittest.TestCase):
         self.assertEqual(game.grid_index(7, 0, 1, 5, 8), 7)
         self.assertEqual(game.grid_index(1, 0, -1, 5, 8), 0)
 
+    def test_controller_stick_deadzone_and_response_curve(self):
+        self.assertEqual(game.stick_value(0.0), 0.0)
+        self.assertEqual(game.stick_value(0.19), 0.0)
+        self.assertLess(game.stick_value(0.5), 0.2)
+        self.assertAlmostEqual(game.stick_value(1.0), 1.0)
+        self.assertAlmostEqual(game.stick_value(-1.0), -1.0)
+
     def test_restart_from_pause_keeps_wave_and_mode(self):
         self.game.battle = game.Battle(self.game, 18, endless=True)
         self.game.state = "pause"
