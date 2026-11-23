@@ -74,7 +74,7 @@ Run `build.ps1` from PowerShell. It installs the two required packages when need
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The packaged game stores progress in `%LOCALAPPDATA%\MoonbladeDefense\save.json`.
+The packaged game stores progress in `%LOCALAPPDATA%\MoonbladeDefense\save.json`. Save files carry a schema version and older saves are upgraded when loaded.
 
 ## Project status
 

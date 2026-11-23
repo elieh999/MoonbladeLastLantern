@@ -12,6 +12,7 @@ WIDTH, HEIGHT = 1280, 720
 GROUND_Y = 555
 FPS = 60
 TITLE = "Moonblade: Last Lantern"
+SAVE_VERSION = 1
 CHARACTER_SPRITES = {}
 SAVE_DIR = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "MoonbladeDefense")
 SAVE_FILE = os.path.join(SAVE_DIR, "save.json")
@@ -64,7 +65,7 @@ def frame_delta(milliseconds, maximum=.035):
 
 
 def default_save():
-    return {"unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
+    return {"save_version": SAVE_VERSION, "unlocked": 1, "coins": 250, "difficulty": "normal", "endless_best": 0,
             "upgrades": {"vitality": 0, "blade": 0, "bow": 0, "gate": 0, "spirit": 0}, "best": {},
             "stats": {"kills": 0, "summons": 0, "wins": 0, "best_combo": 0}, "achievements": [],
             "sound": True, "sound_volume": 8, "reduced_motion": False}
@@ -81,6 +82,7 @@ def validated_save(data):
         value = max(low, value)
         return min(value, high) if high is not None else value
 
+    save["save_version"] = SAVE_VERSION
     save["unlocked"] = safe_int(data.get("unlocked"), 1, 1, 15)
     save["coins"] = safe_int(data.get("coins"), 250)
     save["endless_best"] = safe_int(data.get("endless_best"), 0)

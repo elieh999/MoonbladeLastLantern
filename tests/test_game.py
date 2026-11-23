@@ -92,6 +92,7 @@ class MoonbladeTests(unittest.TestCase):
         self.assertEqual(loaded["coins"], 912)
         self.assertEqual(loaded["difficulty"], "nightmare")
         self.assertEqual(loaded["upgrades"]["blade"], 4)
+        self.assertEqual(loaded["save_version"], game.SAVE_VERSION)
 
     def test_corrupt_primary_save_recovers_backup(self):
         backup = game.default_save()
@@ -127,6 +128,14 @@ class MoonbladeTests(unittest.TestCase):
         self.assertEqual(loaded["upgrades"]["blade"], 20)
         self.assertEqual(loaded["best"], {"1": 3})
         self.assertEqual(loaded["achievements"], ["first_blood"])
+        self.assertEqual(loaded["save_version"], game.SAVE_VERSION)
+
+    def test_older_save_is_upgraded_without_losing_progress(self):
+        loaded = game.validated_save({"unlocked": 4, "coins": 330, "stats": {"kills": 12}})
+        self.assertEqual(loaded["save_version"], game.SAVE_VERSION)
+        self.assertEqual(loaded["unlocked"], 4)
+        self.assertEqual(loaded["coins"], 330)
+        self.assertEqual(loaded["stats"]["kills"], 12)
 
 
 if __name__ == "__main__":
