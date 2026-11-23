@@ -11,6 +11,7 @@ The game is inspired by *Samurai vs Zombies Defense*. That game is no longer ava
 ## What is playable
 
 * 15 campaign waves with persistent progress and star ratings
+* wave previews that show the enemy composition before each battle
 * Endless Night mode after the main menu, with a saved personal record
 * Story, Normal, and Nightmare difficulty settings
 * controllable sword and bow combat

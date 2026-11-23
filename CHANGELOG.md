@@ -2,6 +2,8 @@
 
 ## Next update
 
+* added enemy-composition previews to the campaign wave selector
+* added save schema versioning for safe progress migrations
 * added sound and full screen controls
 * added controller support
 * added a bestiary for all enemy roles
